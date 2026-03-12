@@ -186,7 +186,8 @@ docker compose exec gitlab gitlab-rails runner "
 "
 ```
 
-> Ersetze `deine.email@beispiel.de` durch die tatsächlich verwendete Adresse. Der Befehl bestätigt die Adresse und setzt sie als primäre E-Mail des Benutzers.
+> Ersetze `deine.email@beispiel.de` durch die tatsächlich verwendete Adresse.
+> Der Befehl bestätigt die Adresse und setzt sie als primäre E-Mail des Benutzers.
 
 ## Stoppen
 
