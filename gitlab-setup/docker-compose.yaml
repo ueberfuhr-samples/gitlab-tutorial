@@ -1,0 +1,23 @@
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ee:latest'
+    restart: always
+    hostname: 'localhost'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:8880'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+    ports:
+      - '8880:8880'  # Web UI
+      - '4443:443'   # HTTPS
+      - '2222:22'    # SSH
+    volumes:
+      - '${GITLAB_HOME:-${PWD}}/config:/etc/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/logs:/var/log/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/data:/var/opt/gitlab'
+    networks:
+      - gitlab-net
+
+networks:
+  gitlab-net:
+    name: gitlab-net
