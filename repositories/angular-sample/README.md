@@ -6,7 +6,7 @@ Dieses Projekt ist ein Angular-Frontend (RecipesApp), das im Rahmen des GitLab-T
 
 ### Projekt in GitLab anlegen
 
-1. Öffne GitLab unter http://localhost:8880.
+1. Öffne GitLab unter http://gitlab:8880.
 2. Erstelle bei Bedarf eine neue **Gruppe** (z. B. `tutorial`): **Menu → Groups → Create group**.
 3. Erstelle innerhalb der Gruppe ein neues **Projekt** (z. B. `angular-sample`): **New project → Create blank project**.
    - Deaktiviere die Option "Initialize repository with a README", da wir ein bestehendes Repository pushen.
@@ -21,7 +21,7 @@ cd repositories/angular-sample
 git init
 
 # Remote hinzufügen (Gruppe und Projekt anpassen)
-git remote add origin ssh://git@localhost:2222/<gruppe>/angular-sample.git
+git remote add origin ssh://git@gitlab:2222/<gruppe>/angular-sample.git
 
 # Alle Dateien hinzufügen und ersten Commit erstellen
 git add .
