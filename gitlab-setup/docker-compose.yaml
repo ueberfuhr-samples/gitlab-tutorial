@@ -2,22 +2,30 @@ services:
   gitlab:
     image: 'gitlab/gitlab-ee:latest'
     restart: always
-    hostname: 'localhost'
+    hostname: 'gitlab'
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://localhost:8880'
+        external_url 'http://gitlab:8880'
         gitlab_rails['gitlab_shell_ssh_port'] = 2222
     ports:
       - '8880:8880'  # Web UI
       - '4443:443'   # HTTPS
       - '2222:22'    # SSH
     volumes:
-      - '${GITLAB_HOME:-${PWD}}/config:/etc/gitlab'
-      - '${GITLAB_HOME:-${PWD}}/logs:/var/log/gitlab'
-      - '${GITLAB_HOME:-${PWD}}/data:/var/opt/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/gitlab/config:/etc/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/gitlab/logs:/var/log/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/gitlab/data:/var/opt/gitlab'
     networks:
       - gitlab-net
-
+  gitlab-runner:
+    image: 'gitlab/gitlab-runner:latest'
+    restart: always
+    volumes:
+      - '${GITLAB_HOME:-${PWD}}/runner/config:/etc/gitlab-runner'
+      - '${GITLAB_HOME:-${PWD}}/runner/data:/var/opt/gitlab-runner'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    networks:
+      - gitlab-net
 networks:
   gitlab-net:
     name: gitlab-net

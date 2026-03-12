@@ -19,24 +19,46 @@ Es sind daher keine separaten Container für diese Dienste nötig.
 
 ## Installation
 
-### 1. Optional: Eigenes Datenverzeichnis verwenden
+### Datenverzeichnis einrichten
 
-Die `docker-compose.yaml` verwendet die Variable `GITLAB_HOME` als Basis-Pfad für die Unterordner `config`, `data` und `logs`, die als Volumes in den Container gemountet werden. Standardmäßig wird das aktuelle Verzeichnis verwendet – die mitgelieferten Unterordner sind bereits vorhanden und vorbereitet, sodass keine weiteren Schritte nötig sind.
+Die `docker-compose.yaml` verwendet die Variable `GITLAB_HOME` als Basis-Pfad für die Volume-Mounts. Die Verzeichnisstruktur ist wie folgt aufgebaut:
+
+```
+$GITLAB_HOME/
+├── gitlab/
+│   ├── config/    # /etc/gitlab
+│   ├── data/      # /var/opt/gitlab
+│   └── logs/      # /var/log/gitlab
+└── runner/
+    ├── config/    # /etc/gitlab-runner
+    └── data/      # /var/opt/gitlab-runner
+```
+
+Standardmäßig wird das aktuelle Verzeichnis verwendet – die mitgelieferten Unterordner sind bereits vorhanden. Die Container benötigen aber Schreibzugriff auf die Volume-Verzeichnisse:
+
+```bash
+# Berechtigungen setzen, damit die Container Schreibzugriff haben
+chmod -R 777 gitlab runner
+```
+
+### Optional: Eigenes Datenverzeichnis verwenden
 
 Falls du die Daten an einem **anderen Ort** ablegen möchtest, musst du die Verzeichnisse dort anlegen, berechtigen und `GITLAB_HOME` setzen:
 
 ```bash
 # Gewünschtes Datenverzeichnis als Umgebungsvariable setzen
 export GITLAB_HOME=/pfad/zum/gewuenschten/verzeichnis
-# Unterordner für Konfiguration, Daten und Logs anlegen
-mkdir -p "$GITLAB_HOME/config" "$GITLAB_HOME/data" "$GITLAB_HOME/logs"
-# Berechtigungen setzen, damit der Container Schreibzugriff hat
-chmod -R 777 "$GITLAB_HOME/config" "$GITLAB_HOME/data" "$GITLAB_HOME/logs"
+# Unterordner für GitLab anlegen
+mkdir -p "$GITLAB_HOME/gitlab/config" "$GITLAB_HOME/gitlab/data" "$GITLAB_HOME/gitlab/logs"
+# Unterordner für GitLab Runner anlegen
+mkdir -p "$GITLAB_HOME/runner/config" "$GITLAB_HOME/runner/data"
+# Berechtigungen setzen, damit die Container Schreibzugriff haben
+chmod -R 777 "$GITLAB_HOME/gitlab" "$GITLAB_HOME/runner"
 # Variable in .env-Datei speichern, damit Docker Compose sie automatisch liest
 echo "GITLAB_HOME=$GITLAB_HOME" > .env
 ```
 
-### 2. GitLab starten
+### GitLab starten
 
 ```bash
 docker compose up -d
@@ -44,24 +66,66 @@ docker compose up -d
 
 > **Hinweis:** Der erste Start kann mehrere Minuten dauern, da GitLab intern konfiguriert wird.
 
-Nach erfolgreichem Start ist GitLab unter http://localhost:8880 erreichbar.
+Nach erfolgreichem Start ist GitLab unter http://gitlab:8880, per SSH auf Port `2222` erreichbar.
 
-### 3. Zugriff
+### Hostname einrichten
 
-- **Web UI:** http://localhost:8880
-- **SSH:** Port `2222`
+Damit der Hostname `gitlab` vom Host-Rechner aufgelöst werden kann (z. B. für die Runner-Kommunikation), trage ihn in die lokale Hosts-Datei ein:
+
+```bash
+# Eintrag in /etc/hosts hinzufügen
+echo "127.0.0.1  gitlab" | sudo tee -a /etc/hosts
+# DNS-Cache leeren (macOS)
+sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+```
+
+> **Hinweis:** Unter Linux entfällt der zweite Befehl – der Eintrag in `/etc/hosts` wird sofort wirksam.
 
 ### Erster Login
 
 GitLab erstellt bei der Erstinstallation ein zufälliges Passwort für den Standard-Administrator (`root`). Da die Daten lokal gespiegelt werden, findest du dieses Passwort in einer Datei auf deinem Host-Rechner:
 
 ```
-$GITLAB_HOME/config/initial_root_password
+$GITLAB_HOME/gitlab/config/initial_root_password
 ```
 
-Melde dich anschließend unter http://localhost:8880 mit dem Benutzer `root` und dem ausgelesenen Passwort an.
+Melde dich anschließend unter http://gitlab:8880 mit dem Benutzer `root` und dem ausgelesenen Passwort an.
 
 > **Achtung:** Diese Datei wird aus Sicherheitsgründen nach 24 Stunden automatisch gelöscht.
+
+### GitLab Runner registrieren
+
+Damit CI/CD-Pipelines ausgeführt werden können, muss der GitLab Runner bei der GitLab-Instanz registriert werden.
+
+**1. Runner-Token erzeugen**
+
+Der folgende Befehl erstellt einen Instance Runner in GitLab und gibt dessen Token aus:
+
+```bash
+RUNNER_TOKEN=$(docker exec gitlab-setup-gitlab-1 \
+  gitlab-rails runner \
+  'runner = Ci::Runner.create!(runner_type: "instance_type", description: "CLI Runner"); puts runner.token')
+```
+
+**2. Runner registrieren**
+
+Mit dem Token wird der Runner-Container bei GitLab registriert. Als Executor wird Docker verwendet, sodass jeder CI/CD-Job in einem eigenen Container läuft:
+
+```bash
+docker exec -it gitlab-setup-gitlab-runner-1 \
+  gitlab-runner register \
+  --non-interactive \
+  --url "http://gitlab:8880" \
+  --token "$RUNNER_TOKEN" \
+  --executor "docker" \
+  --docker-image "docker:stable" \
+  --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+  --docker-network-mode "gitlab-net"
+```
+
+> **Hinweis:** Die URL `http://gitlab:8880` nutzt den internen Docker-Netzwerknamen, da Runner und GitLab im selben Netzwerk (`gitlab-net`) laufen.
+
+Nach erfolgreicher Registrierung ist der Runner unter **Admin Area → CI/CD → Runners** sichtbar.
 
 ### SSH-Verbindung einrichten
 
@@ -92,7 +156,7 @@ cat ~/.ssh/id_ed25519.pub
 Damit Git den richtigen Port verwendet, trage folgendes in `~/.ssh/config` ein:
 
 ```
-Host localhost
+Host gitlab
   Port 2222
   IdentityFile ~/.ssh/id_ed25519
 ```
@@ -100,7 +164,7 @@ Host localhost
 Anschließend kannst du Repositories per SSH klonen:
 
 ```bash
-git clone ssh://git@localhost:2222/<gruppe>/<projekt>.git
+git clone ssh://git@gitlab:2222/<gruppe>/<projekt>.git
 ```
 
 ### GPG-Key einrichten (Commit-Signierung)
