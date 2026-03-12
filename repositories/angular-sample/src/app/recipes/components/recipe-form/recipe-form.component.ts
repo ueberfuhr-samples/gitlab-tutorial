@@ -11,7 +11,7 @@ import {Router} from "@angular/router";
 import {FormErrorComponent, isDefined} from "@app/shared";
 import {RecipeService} from '../../services/recipe-service/recipe.service';
 import {Difficulty} from '../../models/difficulty.model';
-import {Recipe, RecipeDraft, RecipeUpdate} from '../../models/recipe.model';
+import {RecipeDraft, RecipeUpdate} from '../../models/recipe.model';
 import {IngredientUnit} from '../../models/ingredient-unit.model';
 import {toObservable} from "@angular/core/rxjs-interop";
 import {distinctUntilChanged, filter, switchMap} from 'rxjs';
@@ -42,7 +42,7 @@ import {IngredientForm} from './models/ingredient-form.model';
 export class RecipeFormComponent {
   public recipeId = input<string>();
 
-  protected recipeToEdit: Recipe | undefined;
+  protected recipeToEdit: RecipeUpdate | undefined;
 
   protected recipeForm: FormGroup<RecipeForm>;
   protected difficultyOptions = difficultyOptions;
@@ -106,16 +106,15 @@ export class RecipeFormComponent {
     }
 
     if (this.recipeToEdit) {
-      const {lastEdited, ...recipeWithoutLastEdited} = this.recipeToEdit;
-      const recipeUpdate = {
+      const recipe = {
         img: '/recipe_pictures/default.jpg',
-        ...recipeWithoutLastEdited,
+        ...this.recipeToEdit,
         ...this.recipeForm.getRawValue(),
       } as RecipeUpdate;
       this.recipeService
-        .updateRecipe(recipeUpdate)
+        .updateRecipe(recipe)
         .subscribe(() => {
-          this.router.navigate(['recipes', recipeUpdate.id]);
+          this.router.navigate(['recipes', recipe.id]);
         });
     } else {
       const recipe = {
