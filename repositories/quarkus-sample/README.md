@@ -1,66 +1,65 @@
-# recipes-api-provider
+# Quarkus Sample – GitLab Tutorial
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Dieses Projekt ist ein Quarkus-Backend (Recipes API Provider), das im Rahmen des GitLab-Tutorials als Beispielprojekt dient.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Repository in GitLab pushen
 
-## Running the application in dev mode
+### Projekt in GitLab anlegen
 
-You can run your application in dev mode that enables live coding using:
+1. Öffne GitLab unter http://localhost:8880.
+2. Erstelle bei Bedarf eine neue **Gruppe** (z. B. `tutorial`): **Menu → Groups → Create group**.
+3. Erstelle innerhalb der Gruppe ein neues **Projekt** (z. B. `quarkus-sample`): **New project → Create blank project**.
+   - Deaktiviere die Option "Initialize repository with a README", da wir ein bestehendes Repository pushen.
 
-```shell script
+### Repository initialisieren und pushen
+
+```bash
+# In dieses Verzeichnis wechseln
+cd repositories/quarkus-sample
+
+# Git-Repository initialisieren
+git init
+
+# Remote hinzufügen (Gruppe und Projekt anpassen)
+git remote add origin ssh://git@localhost:2222/<gruppe>/quarkus-sample.git
+
+# Alle Dateien hinzufügen und ersten Commit erstellen
+git add .
+git commit -m "Initial commit"
+
+# Auf den Main-Branch pushen
+git push -u origin main
+```
+
+## Lokal starten und bauen
+
+### Voraussetzungen
+
+- Java 21+
+- Maven (oder den mitgelieferten Maven Wrapper `./mvnw` verwenden)
+
+### Development Mode
+
+```bash
+# Anwendung im Dev-Modus starten (Live Coding)
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Die Anwendung ist dann unter http://localhost:8080 erreichbar. Die Dev UI ist verfügbar unter http://localhost:8080/q/dev/.
 
-## Packaging and running the application
+### Produktions-Build
 
-The application can be packaged using:
-
-```shell script
+```bash
+# Anwendung paketieren
 ./mvnw package
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Das erzeugt die Datei `target/quarkus-app/quarkus-run.jar`.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+### Gebaute Anwendung starten
 
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+```bash
+java -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/recipes-api-provider-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Die Anwendung ist dann unter http://localhost:8080 erreichbar.
