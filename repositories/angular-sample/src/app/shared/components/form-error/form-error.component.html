@@ -1,0 +1,13 @@
+@if (formControlWithErrors().invalid) {
+  @if (formControlWithErrors().hasError('required')) {
+    <span>Bitte gib einen Wert ein.</span>
+  } @else if (formControlWithErrors().hasError('minlength')) {
+    <span>Der Wert muss mindestens {{ formControlWithErrors().getError('minlength').requiredLength }} Zeichen lang sein.</span>
+  } @else if (formControlWithErrors().hasError('maxlength')) {
+    <span>Der Wert darf maximal {{ formControlWithErrors().getError('maxlength').requiredLength }} Zeichen lang sein.</span>
+  } @else if (formControlWithErrors().hasError('min')) {
+    <span>Der Wert muss mindestens {{ formControlWithErrors().getError('min').min }} betragen.</span>
+  } @else if (formControlWithErrors().hasError('max')) {
+    <span>Der Wert darf maximal {{ formControlWithErrors().getError('max').max }} betragen.</span>
+  }
+}

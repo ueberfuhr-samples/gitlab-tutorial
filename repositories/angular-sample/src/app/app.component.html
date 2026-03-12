@@ -1,0 +1,38 @@
+<mat-toolbar>
+  <div class="flex-container flex-nowrap">
+    <img src="/logo.png" width="40"/>
+    <div class="nav-headline">Meine Rezepte</div>
+  </div>
+  <div class="flex-container flex-justify-content-end flex-grow-1">
+    <div class="toolbar-menu">
+      <a mat-button [matMenuTriggerFor]="menu" aria-label="Menu button">
+        <mat-icon>menu</mat-icon>
+      </a>
+      <mat-menu #menu="matMenu">
+        @for (entry of navigation; track $index) {
+          <a mat-menu-item [routerLink]="entry.routerLink">
+            @if (entry.icon) {
+              <mat-icon class="icon">{{entry.icon}}</mat-icon>
+            }
+            {{entry.label}}
+          </a>
+        }
+      </mat-menu>
+    </div>
+    <div class="toolbar-buttons">
+      @for (entry of navigation; track $index) {
+        <a mat-button
+           [routerLink]="entry.routerLink"
+           routerLinkActive="link-active">
+          @if (entry.icon) {
+            <mat-icon class="icon">{{entry.icon}}</mat-icon>
+          }
+          <span class="label">{{entry.label}}</span>
+        </a>
+      }
+    </div>
+  </div>
+</mat-toolbar>
+<main class="container">
+  <router-outlet />
+</main>

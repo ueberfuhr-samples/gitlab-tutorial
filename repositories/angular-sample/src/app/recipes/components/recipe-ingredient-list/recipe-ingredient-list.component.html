@@ -1,0 +1,10 @@
+<h2>Zutaten</h2>
+für {{ servings() }} Portionen
+<mat-list>
+  @for(ingredient of ingredients(); track $index) {
+    <mat-list-item>
+      <span matListItemTitle>{{ ingredient.name }}</span>
+      <span matListItemLine>{{ ingredient.quantity }} {{ getIngredientUnitLabel(ingredient.unit) }}</span>
+    </mat-list-item>
+  }
+</mat-list>

@@ -1,0 +1,4 @@
+{
+  "production": "${PRODUCTION}",
+  "apiBaseUrl": "${API_BASE_URL}"
+}

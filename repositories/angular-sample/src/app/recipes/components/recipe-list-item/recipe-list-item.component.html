@@ -1,0 +1,16 @@
+<mat-card appearance="outlined">
+    <mat-card-header>
+        <img mat-card-avatar [src]="recipe().img">
+        <mat-card-title>{{ recipe().name }}</mat-card-title>
+        <mat-card-subtitle>Vom: {{ recipe().lastEdited | date: 'dd.MM.yyyy' }}</mat-card-subtitle>
+    </mat-card-header>
+    <img mat-card-image [src]="recipe().img">
+    <mat-card-content>
+      <p><b>Dauer:</b> {{ recipe().duration }} Min.</p>
+      <p><b>Schwierigkeit:</b> {{ getDifficultyLabel(recipe().difficulty) }}</p>
+    </mat-card-content>
+    <mat-divider></mat-divider>
+    <mat-card-actions>
+        <a [routerLink]="['/recipes', recipe().id]" mat-button>Anzeigen</a>
+    </mat-card-actions>
+</mat-card>

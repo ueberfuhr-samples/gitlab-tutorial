@@ -1,0 +1,7 @@
+<div class="grid-container">
+    @for (recipe of recipes(); track $index) {
+        <app-recipe-list-item [recipe]="recipe"/>
+    } @empty {
+        <p class="text-center grid-full">Keine Rezepte vorhanden</p>
+    }
+</div>

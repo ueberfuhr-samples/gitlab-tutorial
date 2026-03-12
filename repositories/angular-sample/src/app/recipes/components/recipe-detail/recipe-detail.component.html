@@ -1,0 +1,17 @@
+<h1>{{ recipe().name }}</h1>
+<app-recipe-info-list [recipe]="recipe()"/>
+<app-recipe-ingredient-list [ingredients]="recipe().ingredients" [servings]="recipe().servings"/>
+<app-recipe-preparation [preparation]="recipe().preparation"/>
+<mat-divider />
+<div class="flex-container flex-justify-content-end pd-y-sm">
+  <a [routerLink]="['/recipes/edit', recipe().id]" mat-button>
+    <mat-icon>edit</mat-icon>
+    Bearbeiten
+  </a>
+  <app-delete-button
+    [withConfirm]="true"
+    confirmTitle="Wirklich Löschen?"
+    confirmMessage="Soll das Rezept {{ this.recipe().name }} wirklich gelöscht werden?"
+    (deleteButtonClicked)="deleteRecipe()"/>
+</div>
+

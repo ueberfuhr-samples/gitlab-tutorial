@@ -1,0 +1,17 @@
+.toolbar {
+  display: flex;
+  flex-flow: row;
+  flex-grow: 1;
+  justify-content: flex-end;
+}
+.toolbar-menu {
+  display: none;
+}
+@media screen and (max-width: 599px) {
+  .toolbar-buttons {
+    display: none;
+  }
+  .toolbar-menu {
+    display: inherit;
+  }
+}

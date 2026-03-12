@@ -1,0 +1,12 @@
+<mat-chip-set>
+  <mat-chip>
+    <div class="flex-container">
+      <mat-icon class="icon">alarm</mat-icon> {{ recipe().duration }} Min.
+    </div>
+  </mat-chip>
+  <mat-chip>
+    <div class="flex-container">
+      <mat-icon class="icon">info_outline</mat-icon> {{ getDifficultyLabel(recipe().difficulty) }}
+    </div>
+  </mat-chip>
+</mat-chip-set>
