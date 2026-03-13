@@ -58,19 +58,9 @@ chmod -R 777 "$GITLAB_HOME/gitlab" "$GITLAB_HOME/runner"
 echo "GITLAB_HOME=$GITLAB_HOME" > .env
 ```
 
-### GitLab starten
-
-```bash
-docker compose up -d
-```
-
-> **Hinweis:** Der erste Start kann mehrere Minuten dauern, da GitLab intern konfiguriert wird.
-
-Nach erfolgreichem Start ist GitLab unter http://gitlab:8880, per SSH auf Port `2222` erreichbar.
-
 ### Hostname einrichten
 
-Damit der Hostname `gitlab` vom Host-Rechner aufgelöst werden kann (z. B. für die Runner-Kommunikation), trage ihn in die lokale Hosts-Datei ein:
+Damit der Hostname `gitlab` vom Host-Rechner aufgelöst werden kann (z.B. für die Runner-Kommunikation), trage ihn in die lokale Hosts-Datei ein:
 
 ```bash
 # Eintrag in /etc/hosts hinzufügen
@@ -80,6 +70,31 @@ sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
 ```
 
 > **Hinweis:** Unter Linux entfällt der zweite Befehl – der Eintrag in `/etc/hosts` wird sofort wirksam.
+
+### SSL-Zertifikate einrichten
+
+Wir erstellen ein Zertifikat für den Hostnamen `gitlab`. Da wir GitLab in Docker betreiben, legen wir die Zertifikate dort ab, wo GitLab sie erwartet.
+
+```bash
+# Verzeichnis für SSL-Zertifikate erstellen
+mkdir -p "$GITLAB_HOME/config/ssl"
+cd "$GITLAB_HOME/config/ssl"
+
+# Privaten Schlüssel und Zertifikat generieren (gültig für 10 Jahre)
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout gitlab.key -out gitlab.crt \
+  -subj "/C=DE/O=Local-Dev/CN=gitlab"
+```
+
+### GitLab starten
+
+```bash
+docker compose up -d
+```
+
+> **Hinweis:** Der erste Start kann mehrere Minuten dauern, da GitLab intern konfiguriert wird.
+
+Nach erfolgreichem Start ist GitLab unter http://gitlab:8880, per SSH auf Port `2222` erreichbar.
 
 ### Erster Login
 
@@ -189,7 +204,7 @@ git clone ssh://git@gitlab:2222/<gruppe>/<projekt>.git
 
 Mit einem GPG-Key kannst du deine Commits signieren, sodass sie in GitLab als **verifiziert** angezeigt werden.
 
-**1. Vorhandene GPG-Keys prüfen**
+#### Vorhandene GPG-Keys prüfen**
 
 ```bash
 gpg --list-secret-keys --keyid-format long
@@ -197,7 +212,7 @@ gpg --list-secret-keys --keyid-format long
 
 Falls bereits ein Key vorhanden ist, wird er hier aufgelistet. Andernfalls ist die Ausgabe leer.
 
-**2. Neuen GPG-Key erstellen (falls keiner vorhanden)**
+#### Neuen GPG-Key erstellen (falls keiner vorhanden)**
 
 ```bash
 gpg --full-generate-key
@@ -209,7 +224,7 @@ Wähle im Dialog:
 - Gültigkeit: nach Bedarf (z. B. `0` für unbegrenzt)
 - Name und E-Mail-Adresse: Verwende dieselbe E-Mail wie in deinem GitLab-Profil.
 
-**3. GPG-Key-ID ermitteln**
+#### GPG-Key-ID ermitteln**
 
 ```bash
 gpg --list-secret-keys --keyid-format long
@@ -223,19 +238,19 @@ sec   rsa4096/ABCDEF1234567890 2026-03-12 [SC]
 
 Hier wäre `ABCDEF1234567890` die Key-ID.
 
-**4. Öffentlichen Key exportieren**
+#### Öffentlichen Key exportieren**
 
 ```bash
 gpg --armor --export ABCDEF1234567890
 ```
 
-**5. GPG-Key in GitLab hinterlegen**
+#### GPG-Key in GitLab hinterlegen**
 
 1. Klicke in GitLab oben rechts auf dein Profilbild → **Preferences**.
 2. Wähle links **GPG Keys** und klicke auf **Add new key**.
 3. Füge den exportierten öffentlichen Key (gesamte Ausgabe inkl. `-----BEGIN PGP PUBLIC KEY BLOCK-----`) dort ein.
 
-**6. Git für Commit-Signierung konfigurieren**
+#### Git für Commit-Signierung konfigurieren**
 
 ```bash
 # ohne "--global" für die Konfiguration eines einzelnen lokalen Repositories
@@ -252,12 +267,12 @@ git config --global commit.gpgsign true
 
 Damit GPG-signierte Commits als verifiziert erkannt werden, muss die E-Mail-Adresse im GitLab-Profil hinterlegt und bestätigt sein. Da die lokale GitLab-Instanz keine E-Mails versenden kann, bestätigen wir die Adresse direkt über die Rails-Konsole.
 
-**1. E-Mail-Adresse im Profil eintragen**
+#### E-Mail-Adresse im Profil eintragen**
 
 1. Klicke in GitLab oben rechts auf dein Profilbild → **Preferences**.
 2. Wähle links **Emails** und füge deine E-Mail-Adresse hinzu.
 
-**2. E-Mail-Adresse per Rails-Konsole bestätigen**
+#### E-Mail-Adresse per Rails-Konsole bestätigen**
 
 ```bash
 docker compose exec gitlab gitlab-rails runner "
@@ -270,43 +285,6 @@ docker compose exec gitlab gitlab-rails runner "
 
 > Ersetze `deine.email@beispiel.de` durch die tatsächlich verwendete Adresse.
 > Der Befehl bestätigt die Adresse und setzt sie als primäre E-Mail des Benutzers.
-
-### Docker Registry einrichten (macOS)
-
-GitLab stellt eine integrierte Container Registry unter `gitlab:5505` bereit. Da wir kein SSL-Zertifikat (HTTPS) verwenden, muss Docker Desktop die Registry als **Insecure Registry** akzeptieren.
-
-**1. Docker Desktop konfigurieren**
-
-1. Öffne die Docker Desktop Einstellungen (Zahnrad-Symbol).
-2. Gehe zu **Docker Engine**.
-3. Füge `gitlab:5505` unter `insecure-registries` hinzu:
-
-```json
-{
-  "builder": {
-    "gc": {
-      "defaultKeepStorage": "20GB",
-      "enabled": true
-    }
-  },
-  "experimental": false,
-  "insecure-registries": [
-    "gitlab:5505"
-  ]
-}
-```
-
-4. Klicke auf **Apply & Restart**.
-
-**2. Login testen**
-
-Sobald Docker Desktop neu gestartet ist, kannst du dich von der Kommandozeile aus anmelden:
-
-```bash
-docker login gitlab:5505
-```
-
-> Verwende deinen GitLab-Benutzernamen und dein Passwort oder einen **Personal Access Token** (empfohlen).
 
 ## Stoppen
 
