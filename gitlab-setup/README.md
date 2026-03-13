@@ -134,8 +134,11 @@ Folgende Konfigurationen sind empfehlenswert:
 - Für schnelleren Durchsatz kann die Anzahl der parallelen Jobs angepasst werden. (z.B. `concurrent = 4`)
 
 ```bash
-# Privilegierter Modusn
+# Privilegierter Modus
 sed -i '' 's/privileged = false/privileged = true/g' $GITLAB_HOME/runner/config/config.toml
+# Erlaube dind-Service, --insecure-registry bei der Ausführung zu verwenden
+sed -i '' '/\[runners.docker\]/a \
+    allowed_privileged_images = ["docker:*-dind", "docker:latest"]' runner/config/config.toml
 # optional: Parallele Verarbeitung von Jobs
 sed -i '' 's/concurrent = 1/concurrent = 4/g' $GITLAB_HOME/runner/config/config.toml
 # Neustart erforderlich
