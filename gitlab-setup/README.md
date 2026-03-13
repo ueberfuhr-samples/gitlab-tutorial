@@ -97,7 +97,7 @@ Melde dich anschließend unter http://gitlab:8880 mit dem Benutzer `root` und de
 
 Damit CI/CD-Pipelines ausgeführt werden können, muss der GitLab Runner bei der GitLab-Instanz registriert werden.
 
-**1. Runner-Token erzeugen**
+#### Runner-Token erzeugen
 
 Der folgende Befehl erstellt einen Instance Runner in GitLab und gibt dessen Token aus:
 
@@ -107,7 +107,7 @@ RUNNER_TOKEN=$(docker exec gitlab-setup-gitlab-1 \
   'runner = Ci::Runner.create!(runner_type: "instance_type", description: "CLI Runner"); puts runner.token')
 ```
 
-**2. Runner registrieren**
+#### Runner registrieren
 
 Mit dem Token wird der Runner-Container bei GitLab registriert. Als Executor wird Docker verwendet, sodass jeder CI/CD-Job in einem eigenen Container läuft:
 
@@ -126,6 +126,21 @@ docker exec -it gitlab-setup-gitlab-runner-1 \
 > **Hinweis:** Die URL `http://gitlab:8880` nutzt den internen Docker-Netzwerknamen, da Runner und GitLab im selben Netzwerk (`gitlab-net`) laufen.
 
 Nach erfolgreicher Registrierung ist der Runner unter **Admin Area → CI/CD → Runners** sichtbar.
+
+#### Runner konfigurieren
+
+Folgende Konfigurationen sind empfehlenswert:
+- Für den _dind_-Service (Docker-in-Docker) muss der Runner im privilegierten Modus (_Super-User-Modus_) laufen. (`privileged = true`)
+- Für schnelleren Durchsatz kann die Anzahl der parallelen Jobs angepasst werden. (z.B. `concurrent = 4`)
+
+```bash
+# Privilegierter Modusn
+sed -i '' 's/privileged = false/privileged = true/g' $GITLAB_HOME/runner/config/config.toml
+# optional: Parallele Verarbeitung von Jobs
+sed -i '' 's/concurrent = 1/concurrent = 4/g' $GITLAB_HOME/runner/config/config.toml
+# Neustart erforderlich
+docker restart gitlab-setup-gitlab-runner-1
+```
 
 ### SSH-Verbindung einrichten
 
@@ -252,6 +267,43 @@ docker compose exec gitlab gitlab-rails runner "
 
 > Ersetze `deine.email@beispiel.de` durch die tatsächlich verwendete Adresse.
 > Der Befehl bestätigt die Adresse und setzt sie als primäre E-Mail des Benutzers.
+
+### Docker Registry einrichten (macOS)
+
+GitLab stellt eine integrierte Container Registry unter `gitlab:5505` bereit. Da wir kein SSL-Zertifikat (HTTPS) verwenden, muss Docker Desktop die Registry als **Insecure Registry** akzeptieren.
+
+**1. Docker Desktop konfigurieren**
+
+1. Öffne die Docker Desktop Einstellungen (Zahnrad-Symbol).
+2. Gehe zu **Docker Engine**.
+3. Füge `gitlab:5505` unter `insecure-registries` hinzu:
+
+```json
+{
+  "builder": {
+    "gc": {
+      "defaultKeepStorage": "20GB",
+      "enabled": true
+    }
+  },
+  "experimental": false,
+  "insecure-registries": [
+    "gitlab:5505"
+  ]
+}
+```
+
+4. Klicke auf **Apply & Restart**.
+
+**2. Login testen**
+
+Sobald Docker Desktop neu gestartet ist, kannst du dich von der Kommandozeile aus anmelden:
+
+```bash
+docker login gitlab:5505
+```
+
+> Verwende deinen GitLab-Benutzernamen und dein Passwort oder einen **Personal Access Token** (empfohlen).
 
 ## Stoppen
 
