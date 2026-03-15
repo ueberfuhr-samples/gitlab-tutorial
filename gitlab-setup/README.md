@@ -29,16 +29,18 @@ $GITLAB_HOME/
 │   ├── config/    # /etc/gitlab
 │   ├── data/      # /var/opt/gitlab
 │   └── logs/      # /var/log/gitlab
-└── runner/
-    ├── config/    # /etc/gitlab-runner
-    └── data/      # /var/opt/gitlab-runner
+├── runner/
+│   ├── config/    # /etc/gitlab-runner
+│   └── data/      # /var/opt/gitlab-runner
+└── shared/
+    └── ssl/       # /etc/gitlab/ssl, /etc/gitlab-runner/certs
 ```
 
 Standardmäßig wird das aktuelle Verzeichnis verwendet – die mitgelieferten Unterordner sind bereits vorhanden. Die Container benötigen aber Schreibzugriff auf die Volume-Verzeichnisse:
 
 ```bash
 # Berechtigungen setzen, damit die Container Schreibzugriff haben
-chmod -R 777 gitlab runner
+chmod -R 777 gitlab runner shared
 ```
 
 ### Optional: Eigenes Datenverzeichnis verwenden
@@ -52,8 +54,10 @@ export GITLAB_HOME=/pfad/zum/gewuenschten/verzeichnis
 mkdir -p "$GITLAB_HOME/gitlab/config" "$GITLAB_HOME/gitlab/data" "$GITLAB_HOME/gitlab/logs"
 # Unterordner für GitLab Runner anlegen
 mkdir -p "$GITLAB_HOME/runner/config" "$GITLAB_HOME/runner/data"
+# Gemeinsam genutzte Unterordner anlegen
+mkdir -p "$GITLAB_HOME/shared/ssl"
 # Berechtigungen setzen, damit die Container Schreibzugriff haben
-chmod -R 777 "$GITLAB_HOME/gitlab" "$GITLAB_HOME/runner"
+chmod -R 777 "$GITLAB_HOME/gitlab" "$GITLAB_HOME/runner" "$GITLAB_HOME/shared"
 # Variable in .env-Datei speichern, damit Docker Compose sie automatisch liest
 echo "GITLAB_HOME=$GITLAB_HOME" > .env
 ```
@@ -77,13 +81,11 @@ Wir erstellen ein Zertifikat für den Hostnamen `gitlab`. Da wir GitLab in Docke
 
 ```bash
 # Verzeichnis für SSL-Zertifikate erstellen
-mkdir -p "$GITLAB_HOME/config/ssl"
-cd "$GITLAB_HOME/config/ssl"
+mkdir -p "$GITLAB_HOME/shared/ssl"
+cd "$GITLAB_HOME/shared/ssl"
 
 # Privaten Schlüssel und Zertifikat generieren (gültig für 10 Jahre)
-openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-  -keyout gitlab.key -out gitlab.crt \
-  -subj "/C=DE/O=Local-Dev/CN=gitlab"
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout gitlab.key -out gitlab.crt -subj "/CN=gitlab" -extensions v3_req -config <(echo "[req]"; echo "distinguished_name=req"; echo "[req] "; echo "[v3_req]"; echo "subjectAltName=DNS:gitlab")
 ```
 
 ### GitLab starten
@@ -94,7 +96,7 @@ docker compose up -d
 
 > **Hinweis:** Der erste Start kann mehrere Minuten dauern, da GitLab intern konfiguriert wird.
 
-Nach erfolgreichem Start ist GitLab unter http://gitlab:8880, per SSH auf Port `2222` erreichbar.
+Nach erfolgreichem Start ist GitLab unter https://gitlab:4443, per SSH auf Port `2222` erreichbar.
 
 ### Erster Login
 
@@ -104,7 +106,7 @@ GitLab erstellt bei der Erstinstallation ein zufälliges Passwort für den Stand
 $GITLAB_HOME/gitlab/config/initial_root_password
 ```
 
-Melde dich anschließend unter http://gitlab:8880 mit dem Benutzer `root` und dem ausgelesenen Passwort an.
+Melde dich anschließend mit dem Benutzer `root` und dem ausgelesenen Passwort an.
 
 > **Achtung:** Diese Datei wird aus Sicherheitsgründen nach 24 Stunden automatisch gelöscht.
 
@@ -130,7 +132,7 @@ Mit dem Token wird der Runner-Container bei GitLab registriert. Als Executor wir
 docker exec -it gitlab-setup-gitlab-runner-1 \
   gitlab-runner register \
   --non-interactive \
-  --url "http://gitlab:8880" \
+  --url "https://gitlab:4443" \
   --token "$RUNNER_TOKEN" \
   --executor "docker" \
   --docker-image "docker:stable" \
@@ -138,7 +140,7 @@ docker exec -it gitlab-setup-gitlab-runner-1 \
   --docker-network-mode "gitlab-net"
 ```
 
-> **Hinweis:** Die URL `http://gitlab:8880` nutzt den internen Docker-Netzwerknamen, da Runner und GitLab im selben Netzwerk (`gitlab-net`) laufen.
+> **Hinweis:** Die URL `https://gitlab:4443` nutzt den internen Docker-Netzwerknamen, da Runner und GitLab im selben Netzwerk (`gitlab-net`) laufen.
 
 Nach erfolgreicher Registrierung ist der Runner unter **Admin Area → CI/CD → Runners** sichtbar.
 
@@ -156,6 +158,8 @@ sed -i '' '/\[runners.docker\]/a \
     allowed_privileged_images = ["docker:*-dind", "docker:latest"]' runner/config/config.toml
 # optional: Parallele Verarbeitung von Jobs
 sed -i '' 's/concurrent = 1/concurrent = 4/g' $GITLAB_HOME/runner/config/config.toml
+# SSL-Mounts ergänzen
+sed -i '' 's|volumes = \["/var/run/docker.sock:/var/run/docker.sock", "/cache"\]|volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache", "/etc/gitlab-runner/certs/gitlab.crt:/etc/docker/certs.d/gitlab:5505/ca.crt:ro", "/etc/gitlab-runner/certs/gitlab.crt:/etc/ssl/certs/gitlab.crt:ro"]|g' $GITLAB_HOME/runner/config/config.toml
 # Neustart erforderlich
 docker restart gitlab-setup-gitlab-runner-1
 ```
@@ -164,7 +168,7 @@ docker restart gitlab-setup-gitlab-runner-1
 
 Da der Host-Port für SSH `2222` ist, muss Git so konfiguriert werden, dass es diesen Port nutzt.
 
-**1. SSH-Key prüfen oder erstellen**
+#### SSH-Key prüfen oder erstellen
 
 Prüfe, ob bereits ein SSH-Key vorhanden ist (meist unter `~/.ssh/id_ed25519.pub` oder `~/.ssh/id_rsa.pub`).
 
@@ -174,7 +178,7 @@ Falls kein Key vorhanden ist, erstelle einen neuen:
 ssh-keygen -t ed25519
 ```
 
-**2. SSH-Key in GitLab hinterlegen**
+#### SSH-Key in GitLab hinterlegen
 
 1. Melde dich in GitLab an und klicke oben rechts auf dein Profilbild → **Preferences**.
 2. Wähle links **SSH Keys** und klicke auf **Add new key**.
@@ -184,7 +188,7 @@ ssh-keygen -t ed25519
 cat ~/.ssh/id_ed25519.pub
 ```
 
-**3. SSH-Konfiguration für Port 2222**
+#### SSH-Konfiguration für Port 2222
 
 Damit Git den richtigen Port verwendet, trage folgendes in `~/.ssh/config` ein:
 
@@ -204,7 +208,7 @@ git clone ssh://git@gitlab:2222/<gruppe>/<projekt>.git
 
 Mit einem GPG-Key kannst du deine Commits signieren, sodass sie in GitLab als **verifiziert** angezeigt werden.
 
-#### Vorhandene GPG-Keys prüfen**
+#### Vorhandene GPG-Keys prüfen
 
 ```bash
 gpg --list-secret-keys --keyid-format long
@@ -212,7 +216,7 @@ gpg --list-secret-keys --keyid-format long
 
 Falls bereits ein Key vorhanden ist, wird er hier aufgelistet. Andernfalls ist die Ausgabe leer.
 
-#### Neuen GPG-Key erstellen (falls keiner vorhanden)**
+#### Neuen GPG-Key erstellen (falls keiner vorhanden)
 
 ```bash
 gpg --full-generate-key
@@ -224,7 +228,7 @@ Wähle im Dialog:
 - Gültigkeit: nach Bedarf (z. B. `0` für unbegrenzt)
 - Name und E-Mail-Adresse: Verwende dieselbe E-Mail wie in deinem GitLab-Profil.
 
-#### GPG-Key-ID ermitteln**
+#### GPG-Key-ID ermitteln
 
 ```bash
 gpg --list-secret-keys --keyid-format long
@@ -238,19 +242,19 @@ sec   rsa4096/ABCDEF1234567890 2026-03-12 [SC]
 
 Hier wäre `ABCDEF1234567890` die Key-ID.
 
-#### Öffentlichen Key exportieren**
+#### Öffentlichen Key exportieren
 
 ```bash
 gpg --armor --export ABCDEF1234567890
 ```
 
-#### GPG-Key in GitLab hinterlegen**
+#### GPG-Key in GitLab hinterlegen
 
 1. Klicke in GitLab oben rechts auf dein Profilbild → **Preferences**.
 2. Wähle links **GPG Keys** und klicke auf **Add new key**.
 3. Füge den exportierten öffentlichen Key (gesamte Ausgabe inkl. `-----BEGIN PGP PUBLIC KEY BLOCK-----`) dort ein.
 
-#### Git für Commit-Signierung konfigurieren**
+#### Git für Commit-Signierung konfigurieren
 
 ```bash
 # ohne "--global" für die Konfiguration eines einzelnen lokalen Repositories
@@ -267,12 +271,12 @@ git config --global commit.gpgsign true
 
 Damit GPG-signierte Commits als verifiziert erkannt werden, muss die E-Mail-Adresse im GitLab-Profil hinterlegt und bestätigt sein. Da die lokale GitLab-Instanz keine E-Mails versenden kann, bestätigen wir die Adresse direkt über die Rails-Konsole.
 
-#### E-Mail-Adresse im Profil eintragen**
+#### E-Mail-Adresse im Profil eintragen
 
 1. Klicke in GitLab oben rechts auf dein Profilbild → **Preferences**.
 2. Wähle links **Emails** und füge deine E-Mail-Adresse hinzu.
 
-#### E-Mail-Adresse per Rails-Konsole bestätigen**
+#### E-Mail-Adresse per Rails-Konsole bestätigen
 
 ```bash
 docker compose exec gitlab gitlab-rails runner "

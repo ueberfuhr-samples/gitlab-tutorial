@@ -7,14 +7,14 @@ services:
       GITLAB_OMNIBUS_CONFIG: |
         # 1. Web-Interface & HTTPS
         external_url 'https://gitlab:4443'
-        nginx['listen_port'] = 443
+        nginx['listen_port'] = 4443
         nginx['redirect_http_to_https'] = true
         nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.crt"
         nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.key"
         
         # 2. Container Registry (mit SSL)
         registry_external_url 'https://gitlab:5505'
-        registry_nginx['listen_port'] = 5005
+        registry_nginx['listen_port'] = 5505
         registry_nginx['ssl_certificate'] = "/etc/gitlab/ssl/gitlab.crt"
         registry_nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/gitlab.key"
         
@@ -23,11 +23,12 @@ services:
 
     ports:
       - '8880:80'  # Web UI
-      - '4443:443'   # HTTPS
+      - '4443:4443'   # HTTPS - muss intern und extern denselben Port haben (Runner-Funktionalität)
       - '2222:22'    # SSH
-      - '5505:5005'  # Container Registry
+      - '5505:5505'  # Container Registry
     volumes:
       - '${GITLAB_HOME:-${PWD}}/gitlab/config:/etc/gitlab'
+      - '${GITLAB_HOME:-${PWD}}/shared/ssl:/etc/gitlab/ssl:ro'
       - '${GITLAB_HOME:-${PWD}}/gitlab/logs:/var/log/gitlab'
       - '${GITLAB_HOME:-${PWD}}/gitlab/data:/var/opt/gitlab'
     networks:
@@ -37,6 +38,7 @@ services:
     restart: always
     volumes:
       - '${GITLAB_HOME:-${PWD}}/runner/config:/etc/gitlab-runner'
+      - '${GITLAB_HOME:-${PWD}}/shared/ssl:/etc/gitlab-runner/certs:ro'
       - '${GITLAB_HOME:-${PWD}}/runner/data:/var/opt/gitlab-runner'
       - '/var/run/docker.sock:/var/run/docker.sock'
     networks:
