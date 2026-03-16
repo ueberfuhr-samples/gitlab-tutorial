@@ -1,0 +1,75 @@
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - template: Jobs/Container-Scanning.gitlab-ci.yml
+
+stages:
+  - build
+  - test
+  - package
+  - scan
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  DOCKER_TLS_CERTDIR: ""
+  # Das Image für das Container-Scanning
+  CS_IMAGE: gitlab:5505/$CI_PROJECT_PATH:latest
+  REGISTRY_HOST: "gitlab:5505"
+
+cache:
+  paths:
+    - .m2/repository
+
+before_script:
+
+  # 1. Zielordner für Docker-Daemon erstellen
+  - mkdir -p /etc/docker/certs.d/gitlab:5505
+  # 2. Kopieren vom neutralen Mount-Pfad (Schritt 2) zum Docker-Ziel
+  - cp /etc/gitlab-custom-certs/gitlab.crt /etc/docker/certs.d/gitlab:5505/ca.crt
+
+# --- STAGE: BUILD ---
+compile-code:
+  stage: build
+  image: maven:3.9.9-eclipse-temurin-21
+  script:
+    - mvn -B clean package -DskipTests
+  artifacts:
+    paths:
+      - target/
+    expire_in: 1 hour
+
+# --- STAGE: TEST ---
+run-tests:
+  stage: test
+  image: maven:3.9.9-eclipse-temurin-21
+  script:
+    - mvn -B test
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - target/surefire-reports/TEST-*.xml
+    paths:
+      - target/
+
+# --- STAGE: PACKAGE ---
+build-image:
+  stage: package
+  image: docker:latest
+  services:
+    - name: docker:dind
+  script:
+    # Einfacher Login über HTTPS (Docker nutzt automatisch das Zertifikat aus before_script)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $REGISTRY_HOST
+    
+    # Bauen und Pushen
+    - docker build -f src/main/docker/Dockerfile.jvm -t $REGISTRY_HOST/$CI_PROJECT_PATH:latest .
+    - docker push $REGISTRY_HOST/$CI_PROJECT_PATH:latest
+
+# --- STAGE: SCAN ---
+container_scanning:
+  stage: scan
+  variables:
+    CI_APPLICATION_REPOSITORY: gitlab:5505/$CI_PROJECT_PATH
+    CI_APPLICATION_TAG: latest
