@@ -1,18 +1,12 @@
-vi.mock('@app/environments', () => ({
-  environment: {
-    apiBaseUrl: '',
-    production: false,
-  },
-}));
-
 import {RecipeService} from './recipe.service';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {beforeEach, describe, expect, it} from 'vitest';
 import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
 import { Recipe, RecipeDraft, RecipeUpdate } from '../../models/recipe.model';
 import { RecipeRequestDto } from './models/recipe-dto.model';
 import { IngredientUnit } from '../../models/ingredient-unit.model';
 import { Difficulty } from '../../models/difficulty.model';
 import {createServiceFactory, SpectatorService} from "@ngneat/spectator/vitest";
+import {ENVIRONMENT} from "@app/environments";
 
 describe(RecipeService.name, () => {
 
@@ -25,7 +19,10 @@ describe(RecipeService.name, () => {
 
   const createService = createServiceFactory({
     service: RecipeService,
-    providers: [provideHttpClientTesting()]
+    providers: [
+      provideHttpClientTesting(),
+      { provide: ENVIRONMENT, useValue: { apiBaseUrl: 'http://localhost:3000', production: false } }
+    ]
   });
 
   const TEST_RECIPE_DRAFT: RecipeDraft = {
