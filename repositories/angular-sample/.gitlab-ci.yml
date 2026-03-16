@@ -11,7 +11,6 @@ stages:
   - scan
 
 variables:
-  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   DOCKER_TLS_CERTDIR: ""
   # Das Image für das Container-Scanning
   CS_IMAGE: gitlab:5505/$CI_PROJECT_PATH:latest
@@ -19,7 +18,7 @@ variables:
 
 cache:
   paths:
-    - .m2/repository
+    - node_modules/
 
 # Wir definieren eine Vorlage für Jobs, die das Zertifikat für Docker brauchen
 .docker_ssl_setup:
@@ -30,29 +29,29 @@ cache:
     - cp /etc/gitlab-custom-certs/gitlab.crt /etc/docker/certs.d/gitlab:5505/ca.crt
 
 # --- STAGE: BUILD ---
-compile-code:
+build-app:
   stage: build
-  image: maven:3.9.9-eclipse-temurin-21
+  image: node:22-alpine
   script:
-    - mvn -B clean package -DskipTests
+    - npm ci
+    - npx ng build
   artifacts:
     paths:
-      - target/
+      - dist/
     expire_in: 1 hour
 
 # --- STAGE: TEST ---
 run-tests:
   stage: test
-  image: maven:3.9.9-eclipse-temurin-21
+  image: node:22-alpine
   script:
-    - mvn -B test
+    - npm ci
+    - npx ng test
   artifacts:
     when: always
     reports:
       junit:
-        - target/surefire-reports/TEST-*.xml
-    paths:
-      - target/
+        - reports/junit.xml
 
 # --- STAGE: PACKAGE ---
 build-image:
@@ -62,11 +61,11 @@ build-image:
   services:
     - name: docker:dind
   script:
-    # Einfacher Login über HTTPS (Docker nutzt automatisch das Zertifikat aus before_script)
+    # Login über HTTPS (Docker nutzt automatisch das Zertifikat aus before_script)
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $REGISTRY_HOST
-    
+
     # Bauen und Pushen
-    - docker build -f src/main/docker/Dockerfile.jvm -t $REGISTRY_HOST/$CI_PROJECT_PATH:latest .
+    - docker build -f docker/Dockerfile -t $REGISTRY_HOST/$CI_PROJECT_PATH:latest .
     - docker push $REGISTRY_HOST/$CI_PROJECT_PATH:latest
 
 # --- STAGE: SCAN ---
