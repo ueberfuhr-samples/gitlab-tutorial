@@ -165,6 +165,48 @@ sed -i '' 's|volumes = \["/var/run/docker.sock:/var/run/docker.sock", "/cache"\]
 docker restart gitlab-setup-gitlab-runner-1
 ```
 
+Die Runner-Konfiguration (`$GITLAB_HOME/runner/config/config.toml`) sollte in etwa wie folgt aussehen:
+
+```yaml
+concurrent = 4
+check_interval = 0
+connection_max_age = "15m0s"
+shutdown_timeout = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "a8d6ea668059"
+  url = "https://gitlab:4443"
+  id = 0
+  token = "glrtr-2SJixoaSCDbyPG3kYheg"
+  token_obtained_at = 0001-01-01T00:00:00Z
+  token_expires_at = 0001-01-01T00:00:00Z
+  executor = "docker"
+  [runners.cache]
+    MaxUploadedArchiveSize = 0
+    [runners.cache.s3]
+    [runners.cache.gcs]
+    [runners.cache.azure]
+  [runners.docker]
+    allowed_privileged_images = ["docker:*-dind", "docker:latest"]
+    tls_verify = false
+    image = "docker:stable"
+    privileged = true
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = [
+        "/var/run/docker.sock:/var/run/docker.sock",
+        "/cache",
+        "/absolute-path-to-gitlab-home/shared/ssl:/etc/gitlab-custom-certs:ro"
+    ]
+    network_mode = "gitlab-net"
+    shm_size = 0
+    network_mtu = 0
+```
+
 ### SSH-Verbindung einrichten
 
 Da der Host-Port für SSH `2222` ist, muss Git so konfiguriert werden, dass es diesen Port nutzt.
