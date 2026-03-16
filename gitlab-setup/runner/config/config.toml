@@ -30,9 +30,7 @@ shutdown_timeout = 0
     volumes = [
         "/var/run/docker.sock:/var/run/docker.sock",
         "/cache",
-        "/etc/gitlab-runner/certs/gitlab.crt:/usr/local/share/ca-certificates/gitlab.crt:ro",
-        # "/etc/gitlab-runner/certs/gitlab.crt:/etc/docker/certs.d/gitlab:5505/ca.crt:ro",
-        "/etc/gitlab-runner/certs/gitlab.crt:/etc/ssl/certs/gitlab.crt:ro"
+        "/etc/gitlab-runner/certs:/etc/gitlab-custom-certs:ro"
     ]
     network_mode = "gitlab-net"
     shm_size = 0
