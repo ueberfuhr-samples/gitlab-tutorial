@@ -158,8 +158,9 @@ sed -i '' '/\[runners.docker\]/a \
     allowed_privileged_images = ["docker:*-dind", "docker:latest"]' runner/config/config.toml
 # optional: Parallele Verarbeitung von Jobs
 sed -i '' 's/concurrent = 1/concurrent = 4/g' $GITLAB_HOME/runner/config/config.toml
-# SSL-Mounts ergänzen
-sed -i '' 's|volumes = \["/var/run/docker.sock:/var/run/docker.sock", "/cache"\]|volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache", "/etc/gitlab-runner/certs/gitlab.crt:/etc/docker/certs.d/gitlab:5505/ca.crt:ro", "/etc/gitlab-runner/certs/gitlab.crt:/etc/ssl/certs/gitlab.crt:ro"]|g' $GITLAB_HOME/runner/config/config.toml
+# SSL-Mounts ergänzen (absoluter Host-Pfad nötig, da CI-Jobs über den Host-Docker-Daemon laufen)
+SSL_HOST_PATH="$(cd "${GITLAB_HOME:-.}" && pwd)/shared/ssl"
+sed -i '' 's|volumes = \["/var/run/docker.sock:/var/run/docker.sock", "/cache"\]|volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache", "'"$SSL_HOST_PATH"':/etc/gitlab-custom-certs:ro"]|g' ${GITLAB_HOME:-.}/runner/config/config.toml
 # Neustart erforderlich
 docker restart gitlab-setup-gitlab-runner-1
 ```
