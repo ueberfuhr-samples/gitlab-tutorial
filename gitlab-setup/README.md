@@ -333,6 +333,10 @@ docker compose exec gitlab gitlab-rails runner "
 > Ersetze `deine.email@beispiel.de` durch die tatsächlich verwendete Adresse.
 > Der Befehl bestätigt die Adresse und setzt sie als primäre E-Mail des Benutzers.
 
+## Gitlab Duo Setup
+
+Um GitLab Duo zu aktivieren, folge den Schritten im [Duo Setup Guide](duo-setup.md).
+
 ## Stoppen
 
 ```bash
