@@ -39,11 +39,16 @@ build-app:
     paths:
       - dist/
     expire_in: 1 hour
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: TEST ---
 run-tests:
   stage: test
   image: node:22-alpine
+  dependencies:
+    - build-app
   script:
     - npm ci
     - npx ng test
@@ -52,6 +57,9 @@ run-tests:
     reports:
       junit:
         - reports/junit.xml
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: PACKAGE ---
 build-image:
@@ -60,13 +68,25 @@ build-image:
   image: docker:latest
   services:
     - name: docker:dind
+  dependencies:
+    - build-app
   script:
-    # Login über HTTPS (Docker nutzt automatisch das Zertifikat aus before_script)
+    # Validate required variables
+    - |
+      if [ -z "$CI_REGISTRY_USER" ] || [ -z "$CI_REGISTRY_PASSWORD" ]; then
+        echo "Error: CI_REGISTRY_USER and CI_REGISTRY_PASSWORD must be set"
+        exit 1
+      fi
+    
+    # Login to Docker registry
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $REGISTRY_HOST
 
-    # Bauen und Pushen
+    # Build and push Docker image
     - docker build -f docker/Dockerfile -t $REGISTRY_HOST/$CI_PROJECT_PATH:latest .
     - docker push $REGISTRY_HOST/$CI_PROJECT_PATH:latest
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: SCAN ---
 container_scanning:

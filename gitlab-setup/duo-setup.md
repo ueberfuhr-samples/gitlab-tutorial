@@ -23,12 +23,7 @@ Da GitLab Duo eine Enterprise-Lizenz erfordert, nutzen wir die 30-Tage-Testversi
 3. Klicke auf **Add License**.
     - Nutze den **Activation Code**, falls du Internetzugriff vom Container aus hast.
     - Lade die **Lizenz-Datei** hoch, falls du den Code nicht nutzen kannst.
-
-### Duo aktivieren & Sitze zuweisen
-1. Gehe zu **Admin Area** > **Settings** > **General** > **AI-powered features**.
-2. Aktiviere **"Enable GitLab Duo features"**.
-3. Gehe zu **Admin Area** > **Usage Quotations** > Tab **GitLab Duo**.
-4. Weise deinem Benutzer einen **Seat** zu (Regler auf "On").
+4. Lade die Seite neu. Es sollte jetzt ein Menüpunkt "GitLab Duo" angezeigt werden.
 
 ---
 

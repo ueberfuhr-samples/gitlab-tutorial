@@ -39,11 +39,16 @@ compile-code:
     paths:
       - target/
     expire_in: 1 hour
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: TEST ---
 run-tests:
   stage: test
   image: maven:3.9.9-eclipse-temurin-21
+  dependencies:
+    - compile-code
   script:
     - mvn -B test
   artifacts:
@@ -53,6 +58,9 @@ run-tests:
         - target/surefire-reports/TEST-*.xml
     paths:
       - target/
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: PACKAGE ---
 build-image:
@@ -61,13 +69,25 @@ build-image:
   image: docker:latest
   services:
     - name: docker:dind
+  dependencies:
+    - compile-code
   script:
-    # Einfacher Login über HTTPS (Docker nutzt automatisch das Zertifikat aus before_script)
+    # Validate required variables
+    - |
+      if [ -z "$CI_REGISTRY_USER" ] || [ -z "$CI_REGISTRY_PASSWORD" ]; then
+        echo "Error: CI_REGISTRY_USER and CI_REGISTRY_PASSWORD must be set"
+        exit 1
+      fi
+    
+    # Login to Docker registry
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $REGISTRY_HOST
     
-    # Bauen und Pushen
+    # Build and push Docker image
     - docker build -f src/main/docker/Dockerfile.jvm -t $REGISTRY_HOST/$CI_PROJECT_PATH:latest .
     - docker push $REGISTRY_HOST/$CI_PROJECT_PATH:latest
+  retry:
+    max: 2
+    when: runner_system_failure
 
 # --- STAGE: SCAN ---
 container_scanning:
