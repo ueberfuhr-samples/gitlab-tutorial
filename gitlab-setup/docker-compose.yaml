@@ -24,8 +24,8 @@ services:
         # 4 Let's Encrypt abschalten, da wir eigene Zertifikate nutzen
         letsencrypt['enable'] = false
     ports:
-      - '8880:80'  # Web UI
-      - '4443:4443'   # HTTPS - muss intern und extern denselben Port haben (Runner-Funktionalität)
+      - '8880:80'    # Web UI
+      - '4443:4443'  # HTTPS - muss intern und extern denselben Port haben (Runner-Funktionalität)
       - '2222:22'    # SSH
       - '5505:5505'  # Container Registry
     volumes:
